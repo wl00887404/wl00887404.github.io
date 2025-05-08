@@ -145,20 +145,21 @@
       </form>
     </div>
     <script>
-      form.onsubmit = (e) => {
+      form.onsubmit = async (e) => {
         e.preventDefault();
-        console.log("怎樣啦");
-        console.log(select.value);
         if (!select.value) return;
 
         const parent = select.value === "father" ? "父親" : "母親";
         // const gender = Math.floor(Math.random() * 2) === 0 ? "男" : "女";
         const gender = select.value === "father" ? "女" : "男";
 
-        let progress = 0;
-        progressBar.style.setProperty("--percent", progress + "%");
-        let begin = performance.now();
+        if (progressBar.style.getPropertyValue("--percent") !== "0%") {
+          progressBar.style.setProperty("--percent", "0%");
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
 
+        let progress = 0;
+        let begin = performance.now();
         const loop = (now) => {
           const delta = now - begin;
           begin = now;
