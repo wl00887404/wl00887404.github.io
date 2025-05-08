@@ -156,6 +156,7 @@
         const gender = select.value === "father" ? "女" : "男";
 
         let progress = 0;
+        progressBar.style.setProperty("--percent", progress + "%");
         let begin = performance.now();
 
         const loop = (now) => {
