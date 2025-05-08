@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>父母性別計算器</title>
+    <style>
+      :root {
+        font-size: 16px;
+        font-family: PingFangSC-Regular, Microsoft JhengHei;
+      }
+
+      body {
+        height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #eeeeee;
+        padding: 1rem;
+      }
+
+      .window {
+        max-width: 30rem;
+        width: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 4px 4px 16px 0px rgba(0, 0, 0, 0.2);
+      }
+
+      .top-bar {
+        background: #6666ff;
+        padding: 0.5rem 1rem;
+        color: white;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+      }
+      .top-bar svg {
+        width: 1rem;
+      }
+
+      .content {
+        padding: 1rem;
+        background: white;
+        display: grid;
+        gap: 1.2rem;
+      }
+
+      .title {
+        font-size: 1.6rem;
+        line-height: 1.4;
+        font-weight: 600;
+      }
+
+      .input-field {
+        font-size: 1.2rem;
+        display: grid;
+        align-items: center;
+        gap: 0.5rem;
+        grid-template-columns: auto 1fr;
+      }
+
+      select {
+        font-size: 1rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+      }
+
+      .buttons {
+        display: grid;
+        gap: 0.5rem;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      button {
+        font-size: 1rem;
+        padding: 0.8rem 0.5rem;
+        color: white;
+        border: none;
+        background: black;
+        border-radius: 4px;
+      }
+
+      .progress-bar {
+        --percent: 0%;
+        border: 1px solid black;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .progress-bar::after {
+        --translatex: calc(var(--percent) - 100%);
+        content: "";
+        height: 2rem;
+        width: 100%;
+        display: block;
+        border-radius: 4px;
+        background: linear-gradient(to right, #b2ff66 0%, #66ff66 100%);
+        transform: translatex(var(--translatex));
+        transition: transform 250ms;
+      }
+
+      .footer {
+        font-size: 0.8rem;
+        line-height: 1.2;
+        text-align: right;
+        font-weight: 600;
+        opacity: 0.87;
+      }
+
+      #submitButton {
+        background: #6666ff;
+      }
+
+      #resetButton {
+        background: #bbbbbb;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="window">
+      <div class="top-bar">
+        <span>父母性別計算機</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512">
+          <!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.-->
+          <path
+            fill="currentColor"
+            d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z"
+          />
+        </svg>
+      </div>
+      <form id="form" class="content">
+        <div class="title">父母性別計算器</div>
+        <label class="input-field">
+          <div>檢測性別：</div>
+          <select id="select">
+            <option value="father">父親</option>
+            <option value="mother">母親</option>
+          </select>
+        </label>
+        <div class="buttons">
+          <button id="submitButton" type="submit">開始檢測</button>
+          <button id="resetButton" type="reset">重設</button>
+        </div>
+        <div id="progressBar" class="progress-bar"></div>
+        <div class="footer">By MaxGPT</div>
+      </form>
+    </div>
+    <script>
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        console.log("怎樣啦");
+        console.log(select.value);
+        if (!select.value) return;
+
+        const parent = select.value === "father" ? "父親" : "母親";
+        // const gender = Math.floor(Math.random() * 2) === 0 ? "男" : "女";
+        const gender = select.value === "father" ? "女" : "男";
+
+        let progress = 0;
+        let begin = performance.now();
+
+        const loop = (now) => {
+          const delta = now - begin;
+          begin = now;
+
+          progress = Math.min(100, progress + delta / 10);
+          progressBar.style.setProperty("--percent", progress + "%");
+
+          if (progress !== 100) return requestAnimationFrame(loop);
+
+          requestAnimationFrame(() => {
+            alert(`計算成功，您的${parent}性別為：${gender}！`);
+          });
+        };
+
+        requestAnimationFrame(loop);
+      };
+
+      resetButton.onclick = () => {
+        progressBar.style.setProperty("--percent", "0%");
+      };
+    </script>
+  </body>
+</html>
