@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>折線圖</title>
+
+    <!-- Reset CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/meyer-reset/2.0/reset.min.css"
+    />
+
+    <!-- Day.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js"></script>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+    <style>
+      :root {
+        --bg: #0f1117;
+        --border: #2a2d3a;
+        --text-primary: #e8eaf0;
+        /* --text-secondary: #6b7080; */
+        --text-secondary: #e8eaf0;
+
+        --accent-a: #5b8af5; /* 折線 A 顏色 */
+        --accent-b: #f5836b; /* 折線 B 顏色 */
+        --accent-c: #4ecb8d;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text-primary);
+        font-family: "SF Mono", "Fira Code", monospace;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+      }
+
+      .container {
+        width: 600px;
+      }
+
+      .card-header {
+        margin-bottom: 2rem;
+      }
+
+      .card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-primary);
+      }
+
+      .card-subtitle {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 0.4rem;
+        letter-spacing: 0.05em;
+      }
+
+      .legend {
+        display: flex;
+        gap: 1.5rem;
+        margin-top: 0.8rem;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+      }
+
+      .legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+
+      .chart-wrapper {
+        position: relative;
+        height: 600px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="card-header">
+        <div class="card-title">體重折線圖</div>
+        <div class="card-subtitle" style="display: none">
+          產生日期：<span id="generated-date"></span>
+        </div>
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background: var(--accent-a)"></div>
+            <span id="legend-a"></span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background: var(--accent-b)"></div>
+            <span id="legend-b"></span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background: var(--accent-c)"></div>
+            <span id="legend-c"></span>
+          </div>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="myChart"></canvas>
+      </div>
+    </div>
+
+    <script>
+      // ========================================================
+      //  ★ 數據設定區 — 在這裡修改你的數據 ★
+      // ========================================================
+
+      // X 軸標籤（日期字串，使用 day.js 格式化顯示）
+
+      const startDate = "2026/5/21";
+
+      const floor2 = (x) => Math.floor(x * 100) / 100;
+
+      const dailyWeights = [
+        // 5/21
+        84.8, 85.2, 84.5, 83.5, 84.2, 83.4, 83.2,
+        // 5/28
+        83.3, 82.8, 82.8, 82.7, 82.8, 82.7, 82.2,
+        // 6/4
+        81.9, 81.8,
+      ];
+
+      const weeklyWeights = (() => {
+        let i = 0;
+        const result = [];
+
+        while (i < dailyWeights.length) {
+          let sum = 0;
+          let j = 0;
+          while (j < 7) {
+            if (i + j === dailyWeights.length) return result;
+
+            sum += dailyWeights[i + j];
+            j++;
+          }
+
+          result.push(floor2(sum / 7));
+          i += j;
+        }
+
+        return result;
+      })();
+
+      const expectedWeights = dailyWeights.map((_, i) => {
+        return floor2(dailyWeights[0] * Math.pow(0.99, i / 7));
+      });
+
+      const labels = dailyWeights.map((_, i) => {
+        return dayjs(startDate).add(i, "day").format("M/D");
+      });
+
+      console.log("labels", labels);
+      console.log("dailyWeights", dailyWeights);
+      console.log("weeklyWeights", weeklyWeights);
+      console.log("expectedWeights", expectedWeights);
+
+      // 折線 A 設定
+      const DATASET_A = {
+        label: "每日體重", // 圖例名稱
+        data: dailyWeights,
+      };
+
+      // 折線 B 設定
+      const DATASET_B = {
+        label: "每週平均體重", // 圖例名稱
+        data: weeklyWeights.flatMap((x) => {
+          return [null, null, null, x, null, null, null];
+        }),
+      };
+
+      const DATASET_C = {
+        label: "期望體重",
+        data: expectedWeights,
+      };
+
+      // ========================================================
+      //  以下為圖表渲染邏輯，通常不需要修改
+      // ========================================================
+
+      // 顯示產生日期
+      document.getElementById("generated-date").textContent =
+        dayjs().format("YYYY-MM-DD HH:mm");
+      document.getElementById("legend-a").textContent = DATASET_A.label;
+      document.getElementById("legend-b").textContent = DATASET_B.label;
+      document.getElementById("legend-c").textContent = DATASET_C.label;
+
+      // 取得 CSS 變數顏色
+      const style = getComputedStyle(document.documentElement);
+      const colorA = style.getPropertyValue("--accent-a").trim(); // #5b8af5
+      const colorB = style.getPropertyValue("--accent-b").trim(); // #f5836b
+      const colorC = style.getPropertyValue("--accent-c").trim();
+      const textSecondary = style.getPropertyValue("--text-secondary").trim();
+      const borderColor = style.getPropertyValue("--border").trim();
+
+      const ctx = document.getElementById("myChart").getContext("2d");
+
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: DATASET_A.label,
+              data: DATASET_A.data,
+              borderColor: colorA,
+              backgroundColor: colorA + "22",
+              pointBackgroundColor: colorA,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              tension: 0.4,
+              fill: true,
+            },
+            {
+              label: DATASET_B.label,
+              data: DATASET_B.data,
+              borderColor: colorB,
+              backgroundColor: colorB + "22",
+              pointBackgroundColor: colorB,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              tension: 0.4,
+              fill: true,
+              spanGaps: true,
+            },
+            {
+              label: DATASET_C.label,
+              data: DATASET_C.data,
+              borderColor: colorC,
+              backgroundColor: colorC + "22",
+              pointBackgroundColor: colorC,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              tension: 0.4,
+              fill: true,
+              spanGaps: true,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: "index",
+            intersect: false,
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: "#1a1d27",
+              borderColor: "#2a2d3a",
+              borderWidth: 1,
+              titleColor: "#e8eaf0",
+              bodyColor: "#a0a4b0",
+              padding: 12,
+              cornerRadius: 8,
+            },
+          },
+          scales: {
+            x: {
+              ticks: {
+                color: textSecondary,
+                font: {
+                  family: "SF Mono, Fira Code, monospace",
+                  size: 12,
+                  weight: "bold",
+                },
+              },
+              grid: { color: borderColor },
+              border: { color: borderColor },
+            },
+            y: {
+              ticks: {
+                stepSize: 0.1,
+                color: textSecondary,
+                font: {
+                  family: "SF Mono, Fira Code, monospace",
+                  size: 12,
+                  weight: "bold",
+                },
+              },
+              grid: { color: borderColor },
+              border: { color: borderColor },
+            },
+          },
+        },
+      });
+    </script>
+  </body>
+</html>
