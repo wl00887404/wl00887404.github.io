@@ -47,8 +47,7 @@
         padding: 2rem;
       }
 
-      .container {
-        overflow: auto;
+      .container 
         /* width: 100vw; */
         /* width: 600px; */
       }
@@ -120,8 +119,10 @@
           </div>
         </div>
       </div>
-      <div class="chart-wrapper" id="chart-wrapper">
-        <canvas id="myChart"></canvas>
+      <div style="overflow-x: auto;>
+        <div class="chart-wrapper" id="chart-wrapper">
+          <canvas id="myChart"></canvas>
+        </div>
       </div>
     </div>
 
