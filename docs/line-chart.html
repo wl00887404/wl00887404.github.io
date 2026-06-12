@@ -139,9 +139,12 @@
 
       // X 軸標籤（日期字串，使用 day.js 格式化顯示）
 
+      const offset = Number(new URLSearchParams(window.location.search).get("offset")) || 0;
+      
       const startDate = "2026/5/21";
 
       const floor2 = (x) => Math.floor(x * 100) / 100;
+      const query
 
       const dailyWeights = [
         // 5
@@ -184,6 +187,7 @@
         return dayjs(startDate).add(i, "day").format("M/D");
       });
 
+      
       console.log("labels", labels);
       console.log("dailyWeights", dailyWeights);
       console.log("weeklyWeights", weeklyWeights);
@@ -192,7 +196,7 @@
       // 折線 A 設定
       const DATASET_A = {
         label: "每日體重", // 圖例名稱
-        data: dailyWeights,
+        data: dailyWeights.slice(offset * 7),
       };
 
       // 折線 B 設定
@@ -200,12 +204,12 @@
         label: "每週平均體重", // 圖例名稱
         data: weeklyWeights.flatMap((x) => {
           return [null, null, null, x, null, null, null];
-        }),
+        }).slice(offset * 7),
       };
 
       const DATASET_C = {
         label: "期望體重",
-        data: expectedWeights,
+        data: expectedWeights.slice(offset * 7),
       };
 
       // ========================================================
@@ -235,7 +239,7 @@
       new Chart(ctx, {
         type: "line",
         data: {
-          labels,
+          labels: labels.slice(offset * 7),
           datasets: [
             {
               label: DATASET_A.label,
