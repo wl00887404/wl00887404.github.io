@@ -48,6 +48,7 @@
       }
 
       .container 
+        width:100%;
         /* width: 100vw; */
         /* width: 600px; */
       }
@@ -94,6 +95,11 @@
       .chart-wrapper {
         position: relative;
         height: 600px;
+      }
+
+      @meida (max-width: 768px) {
+        canvas {
+          pointer-event: none;
       }
     </style>
   </head>
