@@ -48,7 +48,8 @@
       }
 
       .container {
-        width: 100vw;
+        overflow: auto;
+        /* width: 100vw; */
         /* width: 600px; */
       }
 
@@ -119,7 +120,7 @@
           </div>
         </div>
       </div>
-      <div class="chart-wrapper">
+      <div class="chart-wrapper" id="chart-wrapper">
         <canvas id="myChart"></canvas>
       </div>
     </div>
@@ -212,7 +213,8 @@
       document.getElementById("legend-c").textContent = DATASET_C.label;
       document.getElementById("day-count").textContent =
         `Day ${dailyWeights.length}`;
-
+      document.getElementById("chart-wrapper").style.width = dailyWeights.length * 40 + "px"
+      
       // 取得 CSS 變數顏色
       const style = getComputedStyle(document.documentElement);
       const colorA = style.getPropertyValue("--accent-a").trim(); // #5b8af5
