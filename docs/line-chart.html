@@ -125,7 +125,7 @@
           </div>
         </div>
       </div>
-      <div style="overflow-x: auto;">
+      <div style="overflow-x: auto">
         <div class="chart-wrapper" id="chart-wrapper">
           <canvas id="myChart"></canvas>
         </div>
@@ -140,9 +140,11 @@
       // X 軸標籤（日期字串，使用 day.js 格式化顯示）
 
       const floor2 = (x) => Math.floor(x * 100) / 100;
-      
-      const offset = Number(new URLSearchParams(window.location.search).get("offset")) || 0;
+
+      const offset =
+        Number(new URLSearchParams(window.location.search).get("offset")) || 0;
       const startDate = "2026/5/21";
+      
       const dailyWeights = [
         // 5
         //21    22    23    24    25    26    27
@@ -151,25 +153,28 @@
         83.3, 82.8, 82.8, 82.7, 82.8, 82.7, 82.2,
         // 4     5     6     7     8     9    10
         81.9, 81.8, 81.7, 81.6, 81.1, 81.4, 81.6,
-        //11    12
-        81.0, 80.7
+        //11    12    13    14    15    16    17
+        81.0, 80.7, 81.0, null, 81.7, 81.7, 81.6
       ];
-
       const weeklyWeights = (() => {
         let i = 0;
         const result = [];
 
         while (i < dailyWeights.length) {
           let sum = 0;
+          let count = 0;
           let j = 0;
           while (j < 7) {
             if (i + j === dailyWeights.length) return result;
 
-            sum += dailyWeights[i + j];
+            if (dailyWeights[i + j] !== null) {
+              sum += dailyWeights[i + j];
+              count++;
+            }
             j++;
           }
 
-          result.push(floor2(sum / 7));
+          result.push(floor2(sum / count));
           i += j;
         }
 
@@ -184,7 +189,6 @@
         return dayjs(startDate).add(i, "day").format("M/D");
       });
 
-      
       console.log("labels", labels);
       console.log("dailyWeights", dailyWeights);
       console.log("weeklyWeights", weeklyWeights);
@@ -199,9 +203,11 @@
       // 折線 B 設定
       const DATASET_B = {
         label: "每週平均體重", // 圖例名稱
-        data: weeklyWeights.flatMap((x) => {
-          return [null, null, null, x, null, null, null];
-        }).slice(offset * 7),
+        data: weeklyWeights
+          .flatMap((x) => {
+            return [null, null, null, x, null, null, null];
+          })
+          .slice(offset * 7),
       };
 
       const DATASET_C = {
@@ -221,8 +227,9 @@
       document.getElementById("legend-c").textContent = DATASET_C.label;
       document.getElementById("day-count").textContent =
         `Day ${dailyWeights.length}`;
-      document.getElementById("chart-wrapper").style.minWidth = dailyWeights.length * 40 + "px"
-      
+      document.getElementById("chart-wrapper").style.minWidth =
+        dailyWeights.length * 40 + "px";
+
       // 取得 CSS 變數顏色
       const style = getComputedStyle(document.documentElement);
       const colorA = style.getPropertyValue("--accent-a").trim(); // #5b8af5
