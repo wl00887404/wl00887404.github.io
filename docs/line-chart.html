@@ -230,7 +230,7 @@
       document.getElementById("day-count").textContent =
         `Day ${dailyWeights.length}`;
       document.getElementById("chart-wrapper").style.minWidth =
-        dailyWeights.length * 34 + "px";
+        (dailyWeights.length - offset * 7) * 34 + "px";
 
       // 取得 CSS 變數顏色
       const style = getComputedStyle(document.documentElement);
