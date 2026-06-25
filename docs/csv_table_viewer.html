@@ -45,8 +45,9 @@
         const mass = getMass(i);
         const fatRate1 = floor(calcFatRate(mass, 61.7), 2);
         const fatRate2 = floor(calcFatRate(mass, 61.7 + 3.5), 2);
+        const date = dayjs(startDate).add(i * 7, "day").format("MM/DD") +` (${i+1})`
 
-        return [dayjs(startDate).add(i * 7, "day").format("MM/DD"), floor(mass, 2), fatRate1, fatRate2];
+        return [date, floor(mass, 2), fatRate1, fatRate2];
       });
 
       const TABLE_DATA = [
