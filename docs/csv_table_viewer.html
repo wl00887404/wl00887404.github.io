@@ -45,7 +45,7 @@
         const fatRate1 = floor(calcFatRate(mass, 61.7), 2);
         const fatRate2 = floor(calcFatRate(mass, 61.7 + 3.5), 2);
 
-        return [i + 1, mass, fatRate1, fatRate2];
+        return [i + 1, Math.floor(mass), fatRate1, fatRate2];
       });
 
       const TABLE_DATA = [
