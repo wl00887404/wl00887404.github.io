@@ -28,7 +28,15 @@
       // 第一列 [0] 為表頭，其餘為資料列
       // =============================================
 
-      const getMass = (week) => 84.8 * 0.99 ** week;
+      // const startDate = "2026/5/20";
+      // const originalMass = 84.8;
+      // const loseFatRate = 0.99;
+
+      const startDate = "2026/7/8";
+      const originalMass = 79.5;
+      const loseFatRate = 0.994;
+
+      const getMass = (week) => originalMass * loseFatRate ** week;
       const calcFatRate = (x, fatFreeMass) => ((x - fatFreeMass) / x) * 100;
       const range = (length) => {
         return Array(length)
@@ -39,13 +47,15 @@
         const c = Math.pow(10, precision);
         return Math.floor(value * c) / c;
       };
-      
-      const startDate = "2026/5/20";
+
       const data = range(16).map((i) => {
         const mass = getMass(i);
         const fatRate1 = floor(calcFatRate(mass, 61.7), 2);
         const fatRate2 = floor(calcFatRate(mass, 61.7 + 3.5), 2);
-        const date = dayjs(startDate).add(i * 7, "day").format("MM/DD") +` (${i+1})`
+        const date =
+          dayjs(startDate)
+            .add(i * 7, "day")
+            .format("MM/DD") + ` (${i + 1})`;
 
         return [date, floor(mass, 2), fatRate1, fatRate2];
       });
