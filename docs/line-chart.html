@@ -165,7 +165,7 @@
         //  2     3     4     5     6     7     8
         [79.7, 80.1, 80.1, null, 79.7, 80.3, 79.5],
         //  9
-        [79.5]
+        [79.5],
       ].flat();
 
       const weeklyWeights = (() => {
@@ -194,7 +194,16 @@
       })();
 
       const expectedWeights = dailyWeights.map((_, i) => {
-        return floor2(dailyWeights[0] * Math.pow(0.99, i / 7));
+        // 原本預期每週減去 1% 體重
+        // return floor2(dailyWeights[0] * Math.pow(0.99, i / 7));
+
+        // 結果前三週都大約是減去約 1.5% 體重
+        if (i < 21) {
+          return floor2(dailyWeights[0] * Math.pow(1 - 0.015, i / 7));
+        }
+
+        // 最近都是減去約 0.6% 體重
+        return floor2(82.92 * Math.pow(1 - 0.006, i / 7));
       });
 
       const labels = dailyWeights.map((_, i) => {
