@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>時間熱力圖</title>
+<style>
+  :root {
+    --accent: 255, 71, 85; /* #FF4655 */
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: #0f1115;
+    color: #e8e8ea;
+    font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif;
+    padding: 24px;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { color: #888; font-size: 13px; margin-bottom: 24px; }
+
+  .day-block {
+    margin-bottom: 32px;
+    background: #1a1c22;
+    border: 1px solid #2a2d35;
+    border-radius: 10px;
+    padding: 16px 20px 20px;
+    overflow-x: auto;
+  }
+  .day-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 12px;
+    letter-spacing: 0.3px;
+  }
+  .day-title .count {
+    color: #888;
+    font-weight: 400;
+    font-size: 12px;
+    margin-left: 8px;
+  }
+
+  table.heatmap {
+    border-collapse: collapse;
+    font-size: 10px;
+    min-width: 720px;
+  }
+  table.heatmap th, table.heatmap td {
+    text-align: center;
+    padding: 0;
+  }
+  .hour-label {
+    color: #888;
+    font-size: 10px;
+    font-weight: 500;
+    padding-bottom: 4px !important;
+    width: 26px;
+  }
+  .quarter-label {
+    color: #888;
+    font-size: 10px;
+    text-align: right !important;
+    padding-right: 8px !important;
+    width: 34px;
+    white-space: nowrap;
+  }
+  .cell {
+    width: 22px;
+    height: 22px;
+    border-radius: 3px;
+    border: 1px solid #26282f;
+    background-color: #1e2027;
+    cursor: default;
+    transition: transform 0.08s ease;
+  }
+  .cell.has-data:hover {
+    outline: 1.5px solid rgba(var(--accent), 1);
+    transform: scale(1.15);
+    position: relative;
+    z-index: 2;
+  }
+  td.cell-wrap { padding: 1.5px !important; }
+
+  #tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: #22242b;
+    border: 1px solid #3a3d46;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.5;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    display: none;
+    z-index: 10;
+    white-space: nowrap;
+  }
+  #tooltip .row { display: flex; gap: 6px; align-items: baseline; }
+  #tooltip .row + .row { margin-top: 2px; }
+  #tooltip .label { font-weight: 600; }
+  #tooltip .time { color: rgba(var(--accent), 1); font-variant-numeric: tabular-nums; }
+
+  .legend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0 24px;
+    font-size: 12px;
+    color: #888;
+  }
+  .legend .box {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid #26282f;
+  }
+</style>
+</head>
+<body>
+
+<h1>時間熱力圖</h1>
+<div class="subtitle">每格代表 15 分鐘，顏色深淺代表當日該時段的資料筆數</div>
+
+<div class="legend">
+  少
+  <div class="box" style="background:rgba(var(--accent),0)"></div>
+  <div class="box" style="background:rgba(var(--accent),0.35)"></div>
+  <div class="box" style="background:rgba(var(--accent),0.7)"></div>
+  <div class="box" style="background:rgba(var(--accent),1)"></div>
+  多
+</div>
+
+<div id="heatmap-root"></div>
+<div id="tooltip"></div>
+
+<script>
+/* =========================================================
+   1. 資料來源
+   格式：[id, label, isoDate(ISO 字串)]
+   ========================================================= */
+const rawData = [["match.id","競技","2026-07-31T04:36:05.930Z"],["match.id","競技","2026-07-31T05:15:32.879Z"],["match.id","競技","2026-07-31T05:56:11.087Z"],["match.id","競技","2026-07-31T06:39:17.079Z"],["match.id","競技","2026-07-31T08:46:43.929Z"],["match.id","競技","2026-07-31T09:22:11.847Z"],["match.id","競技","2026-07-31T10:41:46.852Z"],["match.id","競技","2026-07-31T11:06:50.211Z"],["match.id","奪還作戰","2026-07-31T11:41:43.427Z"],["match.id","團隊死鬥","2026-07-31T11:51:19.834Z"],["match.id","競技","2026-07-31T12:44:45.050Z"],["match.id","競技","2026-07-31T13:35:58.566Z"],["match.id","競技","2026-07-31T14:27:22.846Z"],["match.id","競技","2026-07-31T15:12:48.494Z"],["match.id","火線交鋒 2v2 ","2026-07-31T15:48:51.708Z"],["match.id","團隊死鬥","2026-07-31T15:57:30.234Z"],["match.id","團隊死鬥","2026-07-31T16:09:51.024Z"],["match.id","團隊死鬥","2026-07-31T16:17:20.590Z"],["match.id","奪還作戰","2026-07-31T16:25:51.823Z"],["match.id","奪還作戰","2026-07-31T16:33:06.733Z"],["match.id","超速衝點","2026-07-31T16:42:01.428Z"],["match.id","團隊死鬥","2026-07-31T17:01:50.439Z"],["match.id","團隊死鬥","2026-07-31T17:11:18.121Z"],["match.id","超速衝點","2026-07-31T17:20:33.525Z"],["match.id","超速衝點","2026-07-31T17:38:01.222Z"],["match.id","超速衝點","2026-07-31T17:57:21.376Z"],["match.id","競技","2026-07-31T18:16:20.970Z"],["match.id","團隊死鬥","2026-07-31T18:53:00.806Z"],["match.id","超速衝點","2026-07-31T19:02:34.175Z"],["match.id","團隊死鬥","2026-07-31T19:18:12.061Z"],["match.id","超速衝點","2026-07-31T19:26:14.942Z"],["match.id","團隊死鬥","2026-07-31T19:38:38.850Z"],["match.id","團隊死鬥","2026-07-31T19:46:50.179Z"],["match.id","團隊死鬥","2026-07-31T19:54:27.759Z"],["match.id","超速衝點","2026-07-31T20:02:47.349Z"],["match.id","團隊死鬥","2026-08-01T00:15:56.278Z"],["match.id","超速衝點","2026-08-01T00:27:00.893Z"],["match.id","團隊死鬥","2026-08-01T00:43:16.257Z"],["match.id","團隊死鬥","2026-08-01T00:51:47.443Z"],["match.id","團隊死鬥","2026-08-01T01:00:21.754Z"],["match.id","奪還作戰","2026-08-01T01:07:53.412Z"],["match.id","團隊死鬥","2026-08-01T01:39:22.491Z"],["match.id","團隊死鬥","2026-08-01T01:47:28.827Z"],["match.id","超速衝點","2026-08-01T01:56:26.930Z"],["match.id","超速衝點","2026-08-01T02:10:33.714Z"],["match.id","團隊死鬥","2026-08-01T02:25:02.194Z"],["match.id","奪還作戰","2026-08-01T02:33:53.761Z"],["match.id","團隊死鬥","2026-08-01T02:51:57.345Z"],["match.id","團隊死鬥","2026-08-01T03:01:32.181Z"],["match.id","超速衝點","2026-08-01T03:10:40.719Z"],["match.id","超速衝點","2026-08-01T03:22:52.302Z"],["match.id","超速衝點","2026-08-01T03:32:25.625Z"],["match.id","死鬥","2026-08-01T03:49:45.213Z"],["match.id","死鬥","2026-08-01T03:56:40.580Z"],["match.id","死鬥","2026-08-01T04:00:35.329Z"],["match.id","超速衝點","2026-08-01T04:26:52.256Z"],["match.id","團隊死鬥","2026-08-01T04:40:23.904Z"],["match.id","超速衝點","2026-08-01T04:49:41.688Z"],["match.id","競技","2026-08-01T05:12:14.905Z"],["match.id","團隊死鬥","2026-08-01T05:39:24.457Z"],["match.id","超速衝點","2026-08-01T05:48:41.766Z"],["match.id","火線交鋒 2v2 ","2026-08-01T06:00:57.017Z"],["match.id","超速衝點","2026-08-01T06:07:28.960Z"],["match.id","超速衝點","2026-08-01T06:22:59.512Z"],["match.id","死鬥","2026-08-01T06:33:07.329Z"],["match.id","死鬥","2026-08-01T06:40:30.202Z"],["match.id","死鬥","2026-08-01T06:49:45.447Z"],["match.id","競技","2026-08-01T09:49:01.778Z"],["match.id","競技","2026-08-01T10:27:08.491Z"],["match.id","超速衝點","2026-08-01T11:25:42.581Z"],["match.id","死鬥","2026-08-01T11:45:37.183Z"],["match.id","死鬥","2026-08-01T11:55:44.775Z"],["match.id","死鬥","2026-08-01T12:03:41.545Z"],["match.id","超速衝點","2026-08-01T12:15:17.251Z"],["match.id","團隊死鬥","2026-08-01T12:28:15.842Z"],["match.id","死鬥","2026-08-01T12:36:50.282Z"],["match.id","超速衝點","2026-08-01T12:45:41.338Z"],["match.id","超速衝點","2026-08-01T13:01:21.427Z"],["match.id","死鬥","2026-08-01T13:12:08.358Z"],["match.id","輻能搶攻戰","2026-08-01T13:21:12.399Z"],["match.id","超速衝點","2026-08-01T13:28:15.976Z"],["match.id","死鬥","2026-08-01T13:40:33.405Z"],["match.id","超速衝點","2026-08-01T13:55:18.552Z"],["match.id","輻能搶攻戰","2026-08-01T14:11:41.361Z"],["match.id","超速衝點","2026-08-01T14:24:12.433Z"],["match.id","死鬥","2026-08-01T14:39:47.138Z"],["match.id","死鬥","2026-08-01T14:47:09.975Z"],["match.id","超速衝點","2026-08-01T14:55:41.649Z"],["match.id","超速衝點","2026-08-01T15:11:44.167Z"],["match.id","競技","2026-08-01T15:26:37.506Z"],["match.id","死鬥","2026-08-01T15:56:38.470Z"],["match.id","超速衝點","2026-08-01T16:05:09.900Z"],["match.id","死鬥","2026-08-01T16:19:17.043Z"],["match.id","超速衝點","2026-08-01T16:24:36.341Z"],["match.id","死鬥","2026-08-01T16:40:52.797Z"],["match.id","死鬥","2026-08-01T16:49:17.502Z"],["match.id","超速衝點","2026-08-01T17:00:17.407Z"],["match.id","火線交鋒 2v2 ","2026-08-01T17:14:37.736Z"],["match.id","火線交鋒 2v2 ","2026-08-01T17:19:41.931Z"],["match.id","超速衝點","2026-08-01T17:26:42.296Z"],["match.id","死鬥","2026-08-01T17:38:59.064Z"],["match.id","死鬥","2026-08-01T17:47:14.563Z"],["match.id","死鬥","2026-08-01T17:55:15.750Z"],["match.id","超速衝點","2026-08-01T18:05:37.760Z"],["match.id","死鬥","2026-08-01T18:14:32.342Z"],["match.id","死鬥","2026-08-01T18:21:20.376Z"],["match.id","超速衝點","2026-08-01T18:27:50.441Z"],["match.id","超速衝點","2026-08-01T18:43:12.535Z"],["match.id","超速衝點","2026-08-01T19:01:28.877Z"],["match.id","死鬥","2026-08-01T19:17:45.177Z"],["match.id","團隊死鬥","2026-08-01T19:25:25.144Z"],["match.id","超速衝點","2026-08-01T19:38:11.750Z"],["match.id","死鬥","2026-08-01T19:52:18.987Z"],["match.id","超速衝點","2026-08-01T20:00:19.085Z"],["match.id","超速衝點","2026-08-01T20:13:28.460Z"],["match.id","超速衝點","2026-08-01T20:27:14.562Z"],["match.id","死鬥","2026-08-01T20:43:51.813Z"],["match.id","死鬥","2026-08-01T20:51:31.434Z"],["match.id","超速衝點","2026-08-01T20:58:38.455Z"],["match.id","超速衝點","2026-08-01T21:12:26.724Z"],["match.id","超速衝點","2026-08-01T21:23:15.263Z"],["match.id","競技","2026-08-01T21:45:37.827Z"],["match.id","死鬥","2026-08-01T21:55:21.722Z"],["match.id","超速衝點","2026-08-01T22:05:58.603Z"],["match.id","死鬥","2026-08-01T22:19:28.458Z"],["match.id","超速衝點","2026-08-01T22:29:50.308Z"],["match.id","超速衝點","2026-08-01T22:41:00.577Z"],["match.id","死鬥","2026-08-01T22:57:24.298Z"],["match.id","死鬥","2026-08-01T23:05:04.556Z"],["match.id","死鬥","2026-08-01T23:12:06.763Z"],["match.id","超速衝點","2026-08-01T23:21:35.355Z"],["match.id","團隊死鬥","2026-08-01T23:34:18.478Z"],["match.id","團隊死鬥","2026-08-01T23:43:17.274Z"],["match.id","超速衝點","2026-08-01T23:52:37.913Z"],["match.id","死鬥","2026-08-02T00:08:04.278Z"],["match.id","死鬥","2026-08-02T00:20:13.926Z"],["match.id","死鬥","2026-08-02T00:29:04.384Z"],["match.id","超速衝點","2026-08-02T00:39:44.416Z"],["match.id","超速衝點","2026-08-02T00:50:51.381Z"],["match.id","團隊死鬥","2026-08-02T01:01:23.355Z"],["match.id","死鬥","2026-08-02T01:10:19.811Z"],["match.id","超速衝點","2026-08-02T01:19:01.708Z"],["match.id","超速衝點","2026-08-02T01:32:32.447Z"],["match.id","死鬥","2026-08-02T01:47:40.821Z"],["match.id","死鬥","2026-08-02T01:55:10.993Z"],["match.id","超速衝點","2026-08-02T02:02:57.442Z"],["match.id","超速衝點","2026-08-02T02:16:31.294Z"],["match.id","死鬥","2026-08-02T02:28:15.877Z"],["match.id","超速衝點","2026-08-02T02:40:00.891Z"],["match.id","超速衝點","2026-08-02T02:56:19.284Z"],["match.id","超速衝點","2026-08-02T03:10:33.450Z"],["match.id","死鬥","2026-08-02T03:23:07.692Z"],["match.id","死鬥","2026-08-02T03:38:30.593Z"],["match.id","超速衝點","2026-08-02T03:50:10.246Z"],["match.id","超速衝點","2026-08-02T04:01:15.720Z"],["match.id","競技","2026-08-02T04:56:35.393Z"],["match.id","死鬥","2026-08-02T05:41:33.295Z"],["match.id","超速衝點","2026-08-02T05:49:09.524Z"],["match.id","死鬥","2026-08-02T06:04:44.931Z"],["match.id","超速衝點","2026-08-02T06:20:28.227Z"],["match.id","死鬥","2026-08-02T06:35:52.008Z"],["match.id","死鬥","2026-08-02T06:42:39.768Z"],["match.id","死鬥","2026-08-02T07:01:22.881Z"],["match.id","超速衝點","2026-08-02T07:08:37.654Z"],["match.id","團隊死鬥","2026-08-02T07:19:59.519Z"],["match.id","超速衝點","2026-08-02T07:29:05.014Z"],["match.id","死鬥","2026-08-02T07:38:56.653Z"],["match.id","死鬥","2026-08-02T07:45:35.194Z"],["match.id","死鬥","2026-08-02T07:53:05.327Z"],["match.id","超速衝點","2026-08-02T08:01:58.258Z"],["match.id","團隊死鬥","2026-08-02T08:18:18.081Z"],["match.id","團隊死鬥","2026-08-02T08:25:20.957Z"],["match.id","超速衝點","2026-08-02T08:35:10.968Z"],["match.id","超速衝點","2026-08-02T08:45:19.815Z"],["match.id","死鬥","2026-08-02T08:59:50.364Z"],["match.id","團隊死鬥","2026-08-02T09:06:22.873Z"],["match.id","超速衝點","2026-08-02T09:16:29.190Z"],["match.id","死鬥","2026-08-02T09:29:59.002Z"],["match.id","超速衝點","2026-08-02T09:39:13.879Z"],["match.id","輻能搶攻戰","2026-08-02T09:58:35.094Z"],["match.id","超速衝點","2026-08-02T10:06:16.560Z"],["match.id","超速衝點","2026-08-02T10:20:08.406Z"],["match.id","死鬥","2026-08-02T10:37:52.476Z"],["match.id","死鬥","2026-08-02T10:46:07.553Z"],["match.id","超速衝點","2026-08-02T10:54:18.322Z"],["match.id","超速衝點","2026-08-02T11:06:54.113Z"],["match.id","超速衝點","2026-08-02T11:16:15.412Z"],["match.id","超速衝點","2026-08-02T11:29:31.689Z"],["match.id","超速衝點","2026-08-02T11:48:17.093Z"],["match.id","競技","2026-08-02T12:07:15.309Z"],["match.id","死鬥","2026-08-02T12:35:27.378Z"],["match.id","超速衝點","2026-08-02T12:43:36.061Z"],["match.id","死鬥","2026-08-02T12:56:33.954Z"],["match.id","超速衝點","2026-08-02T13:02:17.915Z"],["match.id","死鬥","2026-08-02T13:19:54.949Z"],["match.id","死鬥","2026-08-02T13:27:33.727Z"],["match.id","死鬥","2026-08-02T13:41:45.987Z"],["match.id","超速衝點","2026-08-02T13:49:48.298Z"],["match.id","團隊死鬥","2026-08-02T14:02:15.171Z"],["match.id","超速衝點","2026-08-02T14:10:53.623Z"],["match.id","死鬥","2026-08-02T14:25:08.839Z"],["match.id","死鬥","2026-08-02T14:31:53.005Z"],["match.id","死鬥","2026-08-02T14:38:54.191Z"],["match.id","超速衝點","2026-08-02T14:46:10.475Z"],["match.id","超速衝點","2026-08-02T14:58:40.352Z"],["match.id","死鬥","2026-08-02T15:10:53.142Z"],["match.id","超速衝點","2026-08-02T15:22:25.969Z"],["match.id","超速衝點","2026-08-02T15:38:00.145Z"],["match.id","死鬥","2026-08-02T15:51:45.852Z"],["match.id","超速衝點","2026-08-02T15:52:52.502Z"],["match.id","死鬥","2026-08-02T16:07:43.671Z"],["match.id","團隊死鬥","2026-08-02T16:15:47.780Z"],["match.id","超速衝點","2026-08-02T16:25:11.954Z"],["match.id","死鬥","2026-08-02T16:43:10.368Z"],["match.id","超速衝點","2026-08-02T16:53:40.877Z"],["match.id","超速衝點","2026-08-02T17:10:57.599Z"],["match.id","超速衝點","2026-08-02T17:23:46.624Z"],["match.id","死鬥","2026-08-02T17:38:10.161Z"],["match.id","死鬥","2026-08-02T17:45:04.374Z"],["match.id","超速衝點","2026-08-02T17:51:43.925Z"],["match.id","超速衝點","2026-08-02T18:03:50.989Z"],["match.id","競技","2026-08-02T18:15:18.622Z"],["match.id","死鬥","2026-08-02T18:57:10.265Z"],["match.id","超速衝點","2026-08-02T19:05:12.436Z"],["match.id","死鬥","2026-08-02T19:20:57.965Z"],["match.id","超速衝點","2026-08-02T19:29:27.818Z"],["match.id","死鬥","2026-08-02T19:44:55.199Z"],["match.id","死鬥","2026-08-02T19:55:20.748Z"],["match.id","死鬥","2026-08-02T20:02:28.606Z"],["match.id","超速衝點","2026-08-02T20:12:00.613Z"],["match.id","團隊死鬥","2026-08-02T20:25:18.382Z"],["match.id","超速衝點","2026-08-02T20:36:18.365Z"],["match.id","死鬥","2026-08-02T20:52:27.200Z"],["match.id","死鬥","2026-08-02T20:58:48.099Z"],["match.id","死鬥","2026-08-02T21:13:36.073Z"],["match.id","超速衝點","2026-08-02T21:25:05.516Z"],["match.id","超速衝點","2026-08-02T21:42:59.279Z"],["match.id","超速衝點","2026-08-02T21:56:23.241Z"],["match.id","團隊死鬥","2026-08-02T22:15:23.556Z"],["match.id","超速衝點","2026-08-02T22:24:01.364Z"],["match.id","一般","2026-08-02T22:40:34.613Z"],["match.id","一般","2026-08-02T23:24:43.924Z"],["match.id","一般","2026-08-02T23:36:42.012Z"],["match.id","一般","2026-08-02T23:51:30.774Z"],["match.id","一般","2026-08-03T00:39:30.414Z"],["match.id","死鬥","2026-08-03T01:08:53.234Z"],["match.id","超速衝點","2026-08-03T01:18:59.075Z"],["match.id","超速衝點","2026-08-03T01:28:06.738Z"],["match.id","死鬥","2026-08-03T01:43:59.276Z"],["match.id","超速衝點","2026-08-03T01:51:22.049Z"],["match.id","超速衝點","2026-08-03T02:03:09.481Z"],["match.id","超速衝點","2026-08-03T02:15:58.403Z"],["match.id","死鬥","2026-08-03T02:29:52.745Z"],["match.id","死鬥","2026-08-03T02:37:48.198Z"],["match.id","超速衝點","2026-08-03T02:44:43.390Z"],["match.id","超速衝點","2026-08-03T03:00:59.099Z"],["match.id","競技","2026-08-03T03:18:51.151Z"],["match.id","死鬥","2026-08-03T03:47:15.857Z"],["match.id","超速衝點","2026-08-03T04:36:36.677Z"],["match.id","死鬥","2026-08-03T04:46:42.591Z"],["match.id","超速衝點","2026-08-03T04:54:37.425Z"]]
+
+/* =========================================================
+   2. 解析 ISO 字串 -> { dateKey, hour, quarter, timeLabel }
+   全部以「使用者瀏覽器的本地時區」為準（new Date 會自動轉換，
+   再用 getFullYear/getMonth/getDate/getHours/getMinutes 取本地值）
+   ========================================================= */
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function parseRecord(record) {
+  const [id, label, iso] = record;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+
+  const dateKey = `${d.getFullYear()}/${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}`;
+  const hour = d.getHours();
+  const minute = d.getMinutes();
+  const quarter = Math.floor(minute / 15); // 0~3
+  const timeLabel = `${pad2(hour)}:${pad2(minute)}`;
+  return { id, label, dateKey, hour, quarter, timeLabel };
+}
+
+/* =========================================================
+   3. 依日期分組，再依 [hour][quarter] 分桶
+   ========================================================= */
+function buildDayMap(records) {
+  const dayMap = {}; // dateKey -> hour -> quarter -> [items]
+  for (const raw of records) {
+    const r = parseRecord(raw);
+    if (!r) continue;
+    if (!dayMap[r.dateKey]) {
+      dayMap[r.dateKey] = Array.from({ length: 24 }, () =>
+        Array.from({ length: 4 }, () => [])
+      );
+    }
+    dayMap[r.dateKey][r.hour][r.quarter].push(r);
+  }
+  return dayMap;
+}
+
+/* =========================================================
+   4. Alpha 分級：0 筆 -> 0, 1 -> 0.35, 2 -> 0.7, 3+ -> 1
+   ========================================================= */
+function alphaForCount(count) {
+  const steps = [0, 0.35, 0.7, 1];
+  return steps[Math.min(count, 3)];
+}
+
+/* =========================================================
+   5. 畫圖
+   ========================================================= */
+const QUARTER_LABELS = [':00', ':15', ':30', ':45'];
+
+function renderHeatmap(dayMap) {
+  const root = document.getElementById('heatmap-root');
+  root.innerHTML = '';
+
+  const dateKeys = Object.keys(dayMap).sort();
+
+  for (const dateKey of dateKeys) {
+    const hours = dayMap[dateKey];
+    const totalCount = hours.flat(2).length;
+
+    const block = document.createElement('div');
+    block.className = 'day-block';
+
+    const title = document.createElement('div');
+    title.className = 'day-title';
+    title.textContent = dateKey;
+    const countSpan = document.createElement('span');
+    countSpan.className = 'count';
+    countSpan.textContent = `共 ${totalCount} 筆`;
+    title.appendChild(countSpan);
+    block.appendChild(title);
+
+    const table = document.createElement('table');
+    table.className = 'heatmap';
+
+    // 表頭：小時 0~23
+    const headRow = document.createElement('tr');
+    headRow.appendChild(document.createElement('th')); // 對齊左側時間標籤欄
+    for (let h = 0; h < 24; h++) {
+      const th = document.createElement('th');
+      th.className = 'hour-label';
+      th.textContent = pad2(h);
+      headRow.appendChild(th);
+    }
+    table.appendChild(headRow);
+
+    // 四列：00 / 15 / 30 / 45
+    for (let q = 0; q < 4; q++) {
+      const tr = document.createElement('tr');
+      const rowLabel = document.createElement('td');
+      rowLabel.className = 'quarter-label';
+      rowLabel.textContent = QUARTER_LABELS[q];
+      tr.appendChild(rowLabel);
+
+      for (let h = 0; h < 24; h++) {
+        const items = hours[h][q];
+        const alpha = alphaForCount(items.length);
+
+        const td = document.createElement('td');
+        td.className = 'cell-wrap';
+
+        const cell = document.createElement('div');
+        cell.className = 'cell' + (items.length > 0 ? ' has-data' : '');
+        cell.style.backgroundColor = `rgba(var(--accent), ${alpha})`;
+
+        if (items.length > 0) {
+          cell.addEventListener('mouseenter', (e) => showTooltip(e, items));
+          cell.addEventListener('mousemove', moveTooltip);
+          cell.addEventListener('mouseleave', hideTooltip);
+        }
+
+        td.appendChild(cell);
+        tr.appendChild(td);
+      }
+      table.appendChild(tr);
+    }
+
+    block.appendChild(table);
+    root.appendChild(block);
+  }
+}
+
+/* =========================================================
+   6. Tooltip：label + HH:mm，多筆資料則列出多列
+   ========================================================= */
+const tooltipEl = document.getElementById('tooltip');
+
+function showTooltip(e, items) {
+  tooltipEl.innerHTML = items
+    .map(it => `<div class="row"><span class="label">${escapeHtml(it.label)}</span><span class="time">${it.timeLabel}</span></div>`)
+    .join('');
+  tooltipEl.style.display = 'block';
+  moveTooltip(e);
+}
+
+function moveTooltip(e) {
+  const offset = 14;
+  tooltipEl.style.left = e.clientX + offset + 'px';
+  tooltipEl.style.top = e.clientY + offset + 'px';
+}
+
+function hideTooltip() {
+  tooltipEl.style.display = 'none';
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/* =========================================================
+   7. 初始化
+   ========================================================= */
+const dayMap = buildDayMap(rawData);
+renderHeatmap(dayMap);
+</script>
+</body>
+</html>
